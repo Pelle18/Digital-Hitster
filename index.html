@@ -130,17 +130,18 @@
     color: #C9A24B; padding: 3px 10px; border-radius: 20px; margin-bottom: 12px;
   }
   .needs-year-row {
-    display: flex; align-items: center; justify-content: space-between; gap: 10px;
-    padding: 10px 12px; border-radius: 8px;
+    display: flex; align-items: center; flex-wrap: wrap; justify-content: space-between; gap: 8px;
+    padding: 12px; border-radius: 8px;
     background: rgba(122,46,46,0.12);
-    margin-bottom: 6px;
+    margin-bottom: 8px;
     border-left: 3px solid #7A2E2E;
   }
-  .needs-year-row .meta { font-size: 13px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .needs-year-row .meta { font-size: 13px; flex: 1 1 160px; min-width: 140px; }
   .needs-year-row input[type=number] {
     width: 80px; flex-shrink: 0; padding: 7px 8px; font-size: 15px;
   }
   .needs-year-row .btn { flex-shrink: 0; padding: 7px 12px; font-size: 12px; }
+  .needs-year-row .btn:not(.ghost) { background: #6B8F4E; border-color: #6B8F4E; color: #1C1A17; }
 
   /* ---------- Game stage ---------- */
   .stage {
@@ -561,6 +562,7 @@ function renderNeedsYear() {
     const realIdx = songs.indexOf(s);
     const row = document.createElement('div');
     row.className = 'needs-year-row';
+    row.dataset.idx = realIdx;
     row.innerHTML = `
       <div class="meta">
         <input type="text" data-field="title" data-idx="${realIdx}" placeholder="Titel" value="${escapeHtml(s.title)}" style="width:100%; margin-bottom:4px;">
@@ -568,6 +570,7 @@ function renderNeedsYear() {
       </div>
       <input type="number" data-field="year" data-idx="${realIdx}" placeholder="År" value="${s.year != null ? s.year : ''}">
       <a href="https://open.spotify.com/track/${s.id}" target="_blank" rel="noopener" class="btn ghost" style="text-decoration:none; display:inline-block;">Åbn ↗</a>
+      <button class="btn" data-action="confirm" data-idx="${realIdx}" type="button">✓ Færdig</button>
     `;
     list.appendChild(row);
   });
@@ -583,13 +586,18 @@ function renderNeedsYear() {
       }
       saveSongs();
     });
-    input.addEventListener('blur', () => {
-      // Opdater badge/optælling i sangbunken uden at genopbygge needs-year-listen (ville fjerne fokus)
-      const list2 = document.getElementById('song-list');
-      const countEl = document.getElementById('song-count');
-      const readyCount = songs.filter(s => s.year != null).length;
-      countEl.innerHTML = '<span class="count-pill">' + songs.length + ' sange i alt' +
-        (readyCount < songs.length ? ' · ' + (songs.length - readyCount) + ' mangler årstal' : '') + '</span>';
+  });
+
+  list.querySelectorAll('button[data-action="confirm"]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = parseInt(btn.dataset.idx, 10);
+      const s = songs[idx];
+      if (!s.title || !s.artist || s.year == null || isNaN(s.year)) {
+        alert('Udfyld venligst titel, kunstner og årstal, før du trykker Færdig.');
+        return;
+      }
+      saveSongs();
+      renderSongList(); // genopbygger både sangbunken og needs-year-listen, da denne sang nu er komplet
     });
   });
 }
