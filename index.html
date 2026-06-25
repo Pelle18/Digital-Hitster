@@ -80,6 +80,15 @@
   }
   input::placeholder { color: rgba(244,238,227,0.3); }
   input:focus { outline: none; border-color: #C9A24B; }
+  textarea {
+    width: 100%; padding: 10px 12px; border-radius: 8px;
+    border: 1px solid rgba(244,238,227,0.2);
+    background: rgba(0,0,0,0.25); color: #F4EEE3;
+    font-size: 16px; font-family: inherit; resize: vertical;
+    -webkit-appearance: none; appearance: none;
+  }
+  textarea::placeholder { color: rgba(244,238,227,0.3); }
+  textarea:focus { outline: none; border-color: #C9A24B; }
 
   .grid2 { display: grid; grid-template-columns: 2fr 2fr 1fr; gap: 10px; margin-top: 10px; }
   .field { margin-bottom: 0; }
@@ -120,6 +129,18 @@
     display: inline-block; font-size: 12px; background: rgba(201,162,75,0.15);
     color: #C9A24B; padding: 3px 10px; border-radius: 20px; margin-bottom: 12px;
   }
+  .needs-year-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 10px 12px; border-radius: 8px;
+    background: rgba(122,46,46,0.12);
+    margin-bottom: 6px;
+    border-left: 3px solid #7A2E2E;
+  }
+  .needs-year-row .meta { font-size: 13px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .needs-year-row input[type=number] {
+    width: 80px; flex-shrink: 0; padding: 7px 8px; font-size: 15px;
+  }
+  .needs-year-row .btn { flex-shrink: 0; padding: 7px 12px; font-size: 12px; }
 
   /* ---------- Game stage ---------- */
   .stage {
@@ -237,7 +258,19 @@
   <!-- SETUP VIEW -->
   <div class="view active" id="view-setup">
     <div class="panel">
-      <h2>Tilføj en sang</h2>
+      <h2>Hurtig-import fra playliste</h2>
+      <p class="hint">
+        Åbn din Spotify-playliste, marker sangene og kopiér (Ctrl+A → Ctrl+C på computer, eller del/kopiér link for hver sang på mobil).
+        Indsæt det hele herunder — appen finder automatisk alle sang-links. Du skal kun udfylde årstal bagefter.
+      </p>
+      <label for="inp-bulk">Indsæt kopieret tekst eller flere links</label>
+      <textarea id="inp-bulk" rows="5" placeholder="Indsæt Spotify-links her, ét eller flere — gerne hele playlisten på én gang"></textarea>
+      <button class="btn full" id="btn-bulk-import" type="button" style="margin-top:10px;">⭱ Find sange i tekst</button>
+      <p id="bulk-result-msg" style="font-size:12px; color:rgba(244,238,227,0.5); margin:8px 0 0; text-align:center; display:none;"></p>
+    </div>
+
+    <div class="panel">
+      <h2>Tilføj en sang manuelt</h2>
       <p class="hint">Find sangen på Spotify, kopiér linket, og udfyld titel, kunstner og udgivelsesår. Året er det, spillerne skal gætte.</p>
       <div class="field">
         <label for="inp-url">Spotify-link</label>
@@ -249,6 +282,12 @@
         <div class="field"><label for="inp-year">År</label><input type="number" id="inp-year" placeholder="1986"></div>
       </div>
       <button class="btn full" id="btn-add-song" type="button">+ Tilføj til spillet</button>
+    </div>
+
+    <div class="panel" id="panel-needs-year" style="display:none;">
+      <h2>Udfyld årstal</h2>
+      <p class="hint">Disse sange mangler stadig et udgivelsesår, før de kan bruges i spillet.</p>
+      <div id="needs-year-list"></div>
     </div>
 
     <div class="panel">
@@ -434,17 +473,21 @@ function renderSongList() {
   if (songs.length === 0) {
     countEl.innerHTML = '';
     list.innerHTML = '<div class="empty-state">Ingen sange tilføjet endnu.</div>';
+    renderNeedsYear();
     return;
   }
-  countEl.innerHTML = '<span class="count-pill">' + songs.length + ' sange</span>';
+  const readyCount = songs.filter(s => s.year != null).length;
+  countEl.innerHTML = '<span class="count-pill">' + songs.length + ' sange i alt' +
+    (readyCount < songs.length ? ' · ' + (songs.length - readyCount) + ' mangler årstal' : '') + '</span>';
   list.innerHTML = '';
   songs.slice().reverse().forEach((s) => {
     const realIdx = songs.indexOf(s);
     const row = document.createElement('div');
     row.className = 'song-row';
+    const yearLabel = s.year != null ? s.year : '?';
     row.innerHTML = `
       <div style="display:flex; align-items:center;">
-        <span class="year-badge">${s.year}</span>
+        <span class="year-badge">${yearLabel}</span>
         <span class="meta"><b>${escapeHtml(s.title)}</b> <span class="sub">— ${escapeHtml(s.artist)}</span></span>
       </div>
       <button class="btn danger" data-idx="${realIdx}" type="button">Fjern</button>
@@ -458,19 +501,112 @@ function renderSongList() {
       renderSongList();
     });
   });
+  renderNeedsYear();
 }
 
 function escapeHtml(s) {
   return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
+// ---------- Bulk-import fra playliste ----------
+document.getElementById('btn-bulk-import').addEventListener('click', () => {
+  const raw = document.getElementById('inp-bulk').value;
+  const msg = document.getElementById('bulk-result-msg');
+
+  // Find alle Spotify track-links i den indsatte tekst, uanset hvad der omgiver dem
+  const matches = raw.match(/https?:\/\/open\.spotify\.com\/track\/[a-zA-Z0-9]+(\?[^\s]*)?/g) || [];
+
+  if (matches.length === 0) {
+    msg.style.display = 'block';
+    msg.style.color = '#d98c8c';
+    msg.textContent = 'Fandt ingen Spotify-sang-links i teksten. Sørg for at linksene indeholder "open.spotify.com/track/".';
+    return;
+  }
+
+  const existingIds = new Set(songs.map(s => s.id));
+  let added = 0, skipped = 0;
+
+  matches.forEach(url => {
+    const id = extractSpotifyId(url);
+    if (!id || existingIds.has(id)) { skipped++; return; }
+    existingIds.add(id);
+    songs.push({ id, title: '', artist: '', year: null });
+    added++;
+  });
+
+  saveSongs();
+  document.getElementById('inp-bulk').value = '';
+  renderSongList();
+
+  msg.style.display = 'block';
+  msg.style.color = 'rgba(244,238,227,0.6)';
+  msg.textContent = `${added} ny(e) sang(e) tilføjet` + (skipped > 0 ? ` (${skipped} sprunget over, allerede i listen)` : '') +
+    (added > 0 ? '. Udfyld titel, kunstner og årstal for dem herunder.' : '.');
+});
+
+// Viser sange der mangler titel/kunstner/årstal, så de hurtigt kan udfyldes
+function renderNeedsYear() {
+  const panel = document.getElementById('panel-needs-year');
+  const list = document.getElementById('needs-year-list');
+  const incomplete = songs.filter(s => s.year == null || !s.title || !s.artist);
+
+  if (incomplete.length === 0) {
+    panel.style.display = 'none';
+    return;
+  }
+  panel.style.display = 'block';
+  list.innerHTML = '';
+
+  incomplete.forEach((s) => {
+    const realIdx = songs.indexOf(s);
+    const row = document.createElement('div');
+    row.className = 'needs-year-row';
+    row.innerHTML = `
+      <div class="meta">
+        <input type="text" data-field="title" data-idx="${realIdx}" placeholder="Titel" value="${escapeHtml(s.title)}" style="width:100%; margin-bottom:4px;">
+        <input type="text" data-field="artist" data-idx="${realIdx}" placeholder="Kunstner" value="${escapeHtml(s.artist)}" style="width:100%;">
+      </div>
+      <input type="number" data-field="year" data-idx="${realIdx}" placeholder="År" value="${s.year != null ? s.year : ''}">
+      <a href="https://open.spotify.com/track/${s.id}" target="_blank" rel="noopener" class="btn ghost" style="text-decoration:none; display:inline-block;">Åbn ↗</a>
+    `;
+    list.appendChild(row);
+  });
+
+  list.querySelectorAll('input[data-field]').forEach(input => {
+    input.addEventListener('input', () => {
+      const idx = parseInt(input.dataset.idx, 10);
+      const field = input.dataset.field;
+      if (field === 'year') {
+        songs[idx].year = input.value.trim() === '' ? null : parseInt(input.value, 10);
+      } else {
+        songs[idx][field] = input.value;
+      }
+      saveSongs();
+    });
+    input.addEventListener('blur', () => {
+      // Opdater badge/optælling i sangbunken uden at genopbygge needs-year-listen (ville fjerne fokus)
+      const list2 = document.getElementById('song-list');
+      const countEl = document.getElementById('song-count');
+      const readyCount = songs.filter(s => s.year != null).length;
+      countEl.innerHTML = '<span class="count-pill">' + songs.length + ' sange i alt' +
+        (readyCount < songs.length ? ' · ' + (songs.length - readyCount) + ' mangler årstal' : '') + '</span>';
+    });
+  });
+}
+
 // ---------- Play view ----------
 function refreshPlayView() {
   const empty = document.getElementById('play-empty');
   const content = document.getElementById('play-content');
-  if (songs.length === 0) {
+  const playable = songs.filter(s => s.year != null && s.title && s.artist);
+  if (playable.length === 0) {
     empty.style.display = 'block';
     content.style.display = 'none';
+    if (songs.length > 0) {
+      empty.textContent = 'Du har sange i bunken, men de mangler titel, kunstner eller årstal. Gå til "Mine sange" og udfyld dem først.';
+    } else {
+      empty.textContent = 'Ingen sange i bunken endnu. Gå til "Mine sange" og tilføj nogle først.';
+    }
     return;
   }
   empty.style.display = 'none';
@@ -480,7 +616,12 @@ function refreshPlayView() {
 }
 
 function shuffleDeck() {
-  deck = songs.map((s, i) => i);
+  // Kun sange med udfyldt titel, kunstner og årstal kan trækkes i spillet
+  const playableIndices = songs
+    .map((s, i) => ({ s, i }))
+    .filter(({ s }) => s.year != null && s.title && s.artist)
+    .map(({ i }) => i);
+  deck = playableIndices.slice();
   for (let i = deck.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [deck[i], deck[j]] = [deck[j], deck[i]];
