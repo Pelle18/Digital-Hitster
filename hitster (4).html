@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hitster — Hjemmelavet</title>
+<style>
+  @font-face {
+    font-family: 'Fraunces';
+    src: local('Georgia');
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: #1C1A17;
+    color: #F4EEE3;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  body {
+    background-image:
+      radial-gradient(circle at 20% 10%, rgba(201,162,75,0.06), transparent 40%),
+      radial-gradient(circle at 80% 90%, rgba(122,46,46,0.08), transparent 40%);
+  }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 24px 20px 80px; }
+
+  /* ---------- Header ---------- */
+  .topbar {
+    display: flex; align-items: baseline; justify-content: space-between;
+    border-bottom: 1px solid rgba(244,238,227,0.15);
+    padding-bottom: 14px; margin-bottom: 24px;
+  }
+  .logo {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 26px; font-weight: 700; letter-spacing: 0.5px;
+    color: #F4EEE3;
+  }
+  .logo span { color: #C9A24B; }
+  .tagline { font-size: 12px; color: rgba(244,238,227,0.45); letter-spacing: 1.5px; text-transform: uppercase; }
+
+  /* ---------- Tabs ---------- */
+  .tabs { display: flex; gap: 8px; margin-bottom: 28px; }
+  .tab-btn {
+    flex: 1; padding: 11px 14px; border-radius: 8px;
+    border: 1px solid rgba(244,238,227,0.18);
+    background: transparent; color: rgba(244,238,227,0.6);
+    font-size: 14px; cursor: pointer; transition: all 0.15s;
+    font-family: inherit;
+    -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+  }
+  .tab-btn.active {
+    background: #C9A24B; color: #1C1A17; border-color: #C9A24B; font-weight: 600;
+  }
+  .tab-btn:not(.active):hover { border-color: rgba(244,238,227,0.4); color: #F4EEE3; }
+
+  .view { display: none; }
+  .view.active { display: block; }
+
+  /* ---------- Setup form ---------- */
+  .panel {
+    background: rgba(244,238,227,0.04);
+    border: 1px solid rgba(244,238,227,0.12);
+    border-radius: 14px;
+    padding: 22px;
+    margin-bottom: 20px;
+  }
+  .panel h2 {
+    font-family: Georgia, serif; font-size: 18px; margin: 0 0 4px; color: #C9A24B;
+  }
+  .panel .hint { font-size: 13px; color: rgba(244,238,227,0.5); margin: 0 0 18px; line-height: 1.5; }
+
+  label { display: block; font-size: 12px; color: rgba(244,238,227,0.55); margin-bottom: 5px; letter-spacing: 0.3px; }
+  input[type=text], input[type=number] {
+    width: 100%; padding: 10px 12px; border-radius: 8px;
+    border: 1px solid rgba(244,238,227,0.2);
+    background: rgba(0,0,0,0.25); color: #F4EEE3;
+    font-size: 16px; font-family: inherit;
+    -webkit-appearance: none; appearance: none;
+  }
+  input::placeholder { color: rgba(244,238,227,0.3); }
+  input:focus { outline: none; border-color: #C9A24B; }
+
+  .grid2 { display: grid; grid-template-columns: 2fr 2fr 1fr; gap: 10px; margin-top: 10px; }
+  .field { margin-bottom: 0; }
+
+  .btn {
+    border-radius: 8px; border: 1px solid #C9A24B; background: #C9A24B;
+    color: #1C1A17; font-weight: 600; font-size: 14px; padding: 11px 18px;
+    cursor: pointer; font-family: inherit; transition: opacity 0.15s;
+    -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+  }
+  .btn:hover { opacity: 0.88; }
+  .btn.ghost {
+    background: transparent; color: #F4EEE3; border-color: rgba(244,238,227,0.25);
+  }
+  .btn.ghost:hover { border-color: #C9A24B; color: #C9A24B; }
+  .btn.full { width: 100%; margin-top: 14px; }
+  .btn.danger { background: transparent; border-color: rgba(122,46,46,0.6); color: #d98c8c; padding: 6px 10px; font-size: 12px; }
+  .btn.danger:hover { background: rgba(122,46,46,0.2); }
+
+  /* ---------- Song list rows ---------- */
+  .song-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 14px; border-radius: 8px;
+    background: rgba(0,0,0,0.2);
+    margin-bottom: 6px;
+    border-left: 3px solid #C9A24B;
+  }
+  .song-row .meta { font-size: 14px; }
+  .song-row .meta b { font-weight: 600; }
+  .song-row .meta .sub { color: rgba(244,238,227,0.5); font-size: 13px; }
+  .song-row .year-badge {
+    font-family: Georgia, serif; font-weight: 700; color: #C9A24B; margin-right: 14px; font-size: 15px;
+  }
+  .empty-state {
+    text-align: center; padding: 30px 10px; color: rgba(244,238,227,0.4); font-size: 14px;
+  }
+  .count-pill {
+    display: inline-block; font-size: 12px; background: rgba(201,162,75,0.15);
+    color: #C9A24B; padding: 3px 10px; border-radius: 20px; margin-bottom: 12px;
+  }
+
+  /* ---------- Game stage ---------- */
+  .stage {
+    display: flex; flex-direction: column; align-items: center;
+    padding: 40px 0 10px;
+  }
+  .deck-label {
+    font-size: 12px; letter-spacing: 2px; text-transform: uppercase;
+    color: rgba(244,238,227,0.4); margin-bottom: 18px;
+  }
+  .card {
+    width: 260px; height: 260px; border-radius: 16px;
+    position: relative; cursor: pointer;
+    -webkit-perspective: 1200px; perspective: 1200px;
+    -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+  }
+  .card-inner {
+    width: 100%; height: 100%; position: relative;
+    -webkit-transition: -webkit-transform 0.6s cubic-bezier(.4,.2,.2,1);
+    transition: transform 0.6s cubic-bezier(.4,.2,.2,1);
+    -webkit-transform-style: preserve-3d; transform-style: preserve-3d;
+  }
+  .card.flipped .card-inner { -webkit-transform: rotateY(180deg); transform: rotateY(180deg); }
+  .card-face {
+    position: absolute; inset: 0; border-radius: 16px;
+    -webkit-backface-visibility: hidden; backface-visibility: hidden;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.4);
+  }
+  .card-front {
+    background: radial-gradient(circle at center, #2a2622 0%, #1C1A17 75%);
+    border: 2px solid #C9A24B;
+  }
+  .card-front .ring {
+    width: 130px; height: 130px; border-radius: 50%;
+    border: 2px dashed rgba(201,162,75,0.5);
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 14px;
+  }
+  .card-front .ring .dot { width: 14px; height: 14px; border-radius: 50%; background: #C9A24B; }
+  .card-front .label { font-family: Georgia, serif; font-size: 15px; color: rgba(244,238,227,0.6); letter-spacing: 1px; }
+  .card-back {
+    background: #F4EEE3; color: #1C1A17;
+    -webkit-transform: rotateY(180deg); transform: rotateY(180deg);
+    padding: 20px; text-align: center;
+  }
+  .card-back .year { font-family: Georgia, serif; font-size: 56px; font-weight: 700; color: #7A2E2E; line-height: 1; }
+  .card-back .title { font-size: 16px; font-weight: 700; margin-top: 10px; }
+  .card-back .artist { font-size: 14px; color: #555; margin-top: 2px; }
+
+  .stage-controls { display: flex; gap: 10px; margin-top: 28px; }
+
+  .play-area-empty {
+    text-align: center; color: rgba(244,238,227,0.4); padding: 60px 20px; font-size: 14px;
+  }
+
+  /* ---------- Spotify embed ---------- */
+  .spotify-hidden-wrap {
+    position: absolute; width: 1px; height: 1px;
+    overflow: hidden; opacity: 0; pointer-events: none;
+  }
+  .play-trigger {
+    display: block;
+    margin: 22px auto 0;
+    background: #C9A24B; color: #1C1A17; border: none;
+    border-radius: 50px; padding: 14px 32px;
+    font-size: 16px; font-weight: 700; cursor: pointer;
+    font-family: inherit; letter-spacing: 0.3px;
+    box-shadow: 0 6px 16px rgba(201,162,75,0.3);
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+  .play-trigger:hover { opacity: 0.9; }
+  .play-trigger.is-playing { background: #7A2E2E; color: #F4EEE3; box-shadow: 0 6px 16px rgba(122,46,46,0.3); }
+  .play-trigger:disabled { opacity: 0.5; cursor: default; box-shadow: none; }
+
+  /* ---------- Countdown ---------- */
+  .countdown-num {
+    font-family: Georgia, serif; font-size: 64px; color: #C9A24B; font-weight: 700;
+  }
+
+  /* footer note */
+  .footnote { font-size: 12px; color: rgba(244,238,227,0.3); text-align: center; margin-top: 40px; line-height: 1.6; }
+
+  /* ---------- Mobil-justeringer ---------- */
+  @media (max-width: 480px) {
+    .wrap { padding: 16px 14px 60px; }
+    .logo { font-size: 22px; }
+    .panel { padding: 16px; }
+    .grid2 { grid-template-columns: 1fr; gap: 10px; }
+    .card { width: 220px; height: 220px; }
+    .card-front .ring { width: 105px; height: 105px; }
+    .card-back .year { font-size: 44px; }
+    .stage-controls { flex-direction: column; width: 100%; }
+    .stage-controls .btn { width: 100%; }
+    .play-trigger { width: 100%; max-width: 260px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <div>
+      <div class="logo">Hit<span>ster</span> — hjemmelavet</div>
+      <div class="tagline">Gæt året, byg tidslinjen</div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="setup" type="button">Mine sange</button>
+    <button class="tab-btn" data-tab="play" type="button">Spil</button>
+  </div>
+
+  <!-- SETUP VIEW -->
+  <div class="view active" id="view-setup">
+    <div class="panel">
+      <h2>Tilføj en sang</h2>
+      <p class="hint">Find sangen på Spotify, kopiér linket, og udfyld titel, kunstner og udgivelsesår. Året er det, spillerne skal gætte.</p>
+      <div class="field">
+        <label for="inp-url">Spotify-link</label>
+        <input type="text" id="inp-url" placeholder="https://open.spotify.com/track/...">
+      </div>
+      <div class="grid2">
+        <div class="field"><label for="inp-title">Titel</label><input type="text" id="inp-title" placeholder="Sangtitel"></div>
+        <div class="field"><label for="inp-artist">Kunstner</label><input type="text" id="inp-artist" placeholder="Kunstner"></div>
+        <div class="field"><label for="inp-year">År</label><input type="number" id="inp-year" placeholder="1986"></div>
+      </div>
+      <button class="btn full" id="btn-add-song" type="button">+ Tilføj til spillet</button>
+    </div>
+
+    <div class="panel">
+      <div style="display:flex; align-items:baseline; justify-content:space-between;">
+        <h2>Sangbunke</h2>
+        <span style="font-size:11px; color:rgba(244,238,227,0.35);">Gemmes automatisk i denne browser</span>
+      </div>
+      <div id="song-count"></div>
+      <div id="song-list"></div>
+      <div style="display:flex; gap:10px; margin-top:14px;">
+        <button class="btn ghost" id="btn-export" style="flex:1;" type="button">⭳ Gem som fil</button>
+        <button class="btn ghost" id="btn-import" style="flex:1;" type="button">⭱ Indlæs fra fil</button>
+      </div>
+      <p style="font-size:11px; color:rgba(244,238,227,0.4); margin:8px 0 0; text-align:center;">
+        Gem din liste som backup, eller del filen med andre — de kan indlæse den her.
+      </p>
+      <input type="file" id="file-import" accept=".json" style="display:none;">
+      <button class="btn ghost full" id="btn-clear-all" style="margin-top:10px; border-color:rgba(122,46,46,0.5); color:#d98c8c;" type="button">Ryd hele sanglisten</button>
+    </div>
+  </div>
+
+  <!-- PLAY VIEW -->
+  <div class="view" id="view-play">
+    <div id="play-empty" class="play-area-empty" style="display:none;">
+      Ingen sange i bunken endnu. Gå til "Mine sange" og tilføj nogle først.
+    </div>
+
+    <div id="play-content" style="display:none;">
+      <div class="stage">
+        <div class="deck-label"><span id="deck-remaining"></span> kort tilbage i bunken</div>
+
+        <div class="card" id="game-card">
+          <div class="card-inner">
+            <div class="card-face card-front">
+              <div class="ring" id="card-ring">
+                <div class="dot" id="card-dot"></div>
+              </div>
+              <div class="label" id="card-front-label">Tryk for at trække kort</div>
+            </div>
+            <div class="card-face card-back">
+              <div class="year" id="back-year">19XX</div>
+              <div class="title" id="back-title">Titel</div>
+              <div class="artist" id="back-artist">Kunstner</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Play-knappen ligger UDENFOR det 3D-roterede kort (ikke inde i card-front),
+             da iOS Safari kan have problemer med klik på elementer inde i
+             transform-style:preserve-3d containere. -->
+        <button class="play-trigger" id="btn-play-trigger" style="display:none;" type="button">▶ Afspil</button>
+
+        <!-- Spotify-afspilleren er funktionel, men visuelt skjult bag kortet -->
+        <div id="spotify-hidden-wrap" class="spotify-hidden-wrap"></div>
+
+        <p id="guess-hint" class="hint" style="text-align:center; margin-top:14px; display:none;">
+          Gæt året, og tryk "Afslør år" når I er klar.
+        </p>
+
+        <div class="stage-controls">
+          <button class="btn ghost" id="btn-reshuffle" type="button">Bland bunken igen</button>
+          <button class="btn" id="btn-reveal" style="display:none;" type="button">Afslør år</button>
+          <button class="btn" id="btn-next-card" style="display:none;" type="button">Næste kort</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footnote">
+    Spillet kører helt lokalt i din browser. Sangene afspilles i baggrunden via Spotify uden at vise cover, titel eller kunstner — kun "Afspil"-knappen er synlig, indtil I trykker "Afslør år". Du skal være online og have en Spotify-konto (gratis eller Premium) for at høre sangene.
+  </div>
+
+</div>
+
+<script>
+let songs = [];
+let deck = [];
+let currentCard = null;
+let spotifyController = null;
+let spotifyApiReady = false;
+let spotifyApiCallbacks = [];
+let playerReadyTimeout = null;
+
+const STORAGE_KEY = 'hitster_diy_songs_v1';
+
+function saveSongs() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(songs));
+  } catch (e) {
+    console.warn('Kunne ikke gemme sangliste:', e);
+  }
+}
+
+function loadSongs() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) songs = JSON.parse(raw);
+  } catch (e) {
+    console.warn('Kunne ikke indlæse gemt sangliste:', e);
+    songs = [];
+  }
+}
+
+// ---------- Tabs ----------
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('view-' + btn.dataset.tab).classList.add('active');
+    if (btn.dataset.tab === 'play') refreshPlayView();
+  });
+});
+
+// ---------- Spotify helpers ----------
+function extractSpotifyId(url) {
+  const m = url.match(/track\/([a-zA-Z0-9]+)/);
+  return m ? m[1] : null;
+}
+
+// Indlæs Spotifys officielle IFrame API script (kun én gang)
+(function loadSpotifyIframeApi() {
+  const script = document.createElement('script');
+  script.src = 'https://open.spotify.com/embed/iframe-api/v1';
+  document.head.appendChild(script);
+})();
+
+// Spotify kalder denne globale funktion automatisk, når API'et er klar
+window.onSpotifyIframeApiReady = (IFrameAPI) => {
+  spotifyApiReady = true;
+  window._spotifyIFrameAPI = IFrameAPI;
+  // Kør evt. ventende oprettelser, hvis brugeren trak et kort før API'et var klar
+  spotifyApiCallbacks.forEach(cb => cb(IFrameAPI));
+  spotifyApiCallbacks = [];
+};
+
+// Opretter en skjult, kontrollerbar Spotify-afspiller for et givent track-id.
+// onReady(controller) kaldes med et objekt der har .play() og .pause().
+function createHiddenSpotifyPlayer(mountEl, trackId, onReady) {
+  const setup = (IFrameAPI) => {
+    const options = {
+      uri: `spotify:track:${trackId}`,
+      width: '1',
+      height: '1'
+    };
+    IFrameAPI.createController(mountEl, options, (EmbedController) => {
+      EmbedController.addListener('ready', () => {
+        onReady(EmbedController);
+      });
+    });
+  };
+
+  if (spotifyApiReady && window._spotifyIFrameAPI) {
+    setup(window._spotifyIFrameAPI);
+  } else {
+    spotifyApiCallbacks.push(setup);
+  }
+}
+
+// ---------- Add song ----------
+document.getElementById('btn-add-song').addEventListener('click', () => {
+  const url = document.getElementById('inp-url').value.trim();
+  const title = document.getElementById('inp-title').value.trim();
+  const artist = document.getElementById('inp-artist').value.trim();
+  const year = document.getElementById('inp-year').value.trim();
+  const spotifyId = extractSpotifyId(url);
+
+  if (!spotifyId) { alert('Spotify-linket ser ikke korrekt ud. Det skal indeholde "/track/".'); return; }
+  if (!title || !artist || !year) { alert('Udfyld venligst titel, kunstner og år.'); return; }
+
+  songs.push({ id: spotifyId, title, artist, year: parseInt(year, 10) });
+  saveSongs();
+  document.getElementById('inp-url').value = '';
+  document.getElementById('inp-title').value = '';
+  document.getElementById('inp-artist').value = '';
+  document.getElementById('inp-year').value = '';
+  renderSongList();
+});
+
+function renderSongList() {
+  const list = document.getElementById('song-list');
+  const countEl = document.getElementById('song-count');
+  if (songs.length === 0) {
+    countEl.innerHTML = '';
+    list.innerHTML = '<div class="empty-state">Ingen sange tilføjet endnu.</div>';
+    return;
+  }
+  countEl.innerHTML = '<span class="count-pill">' + songs.length + ' sange</span>';
+  list.innerHTML = '';
+  songs.slice().reverse().forEach((s) => {
+    const realIdx = songs.indexOf(s);
+    const row = document.createElement('div');
+    row.className = 'song-row';
+    row.innerHTML = `
+      <div style="display:flex; align-items:center;">
+        <span class="year-badge">${s.year}</span>
+        <span class="meta"><b>${escapeHtml(s.title)}</b> <span class="sub">— ${escapeHtml(s.artist)}</span></span>
+      </div>
+      <button class="btn danger" data-idx="${realIdx}" type="button">Fjern</button>
+    `;
+    list.appendChild(row);
+  });
+  list.querySelectorAll('button[data-idx]').forEach(b => {
+    b.addEventListener('click', () => {
+      songs.splice(parseInt(b.dataset.idx, 10), 1);
+      saveSongs();
+      renderSongList();
+    });
+  });
+}
+
+function escapeHtml(s) {
+  return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// ---------- Play view ----------
+function refreshPlayView() {
+  const empty = document.getElementById('play-empty');
+  const content = document.getElementById('play-content');
+  if (songs.length === 0) {
+    empty.style.display = 'block';
+    content.style.display = 'none';
+    return;
+  }
+  empty.style.display = 'none';
+  content.style.display = 'block';
+  if (deck.length === 0) shuffleDeck();
+  updateDeckLabel();
+}
+
+function shuffleDeck() {
+  deck = songs.map((s, i) => i);
+  for (let i = deck.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [deck[i], deck[j]] = [deck[j], deck[i]];
+  }
+  resetCard();
+  updateDeckLabel();
+}
+
+function updateDeckLabel() {
+  document.getElementById('deck-remaining').textContent = deck.length;
+}
+
+function resetCard() {
+  currentCard = null;
+  spotifyController = null;
+  clearTimeout(playerReadyTimeout);
+  const cardEl = document.getElementById('game-card');
+  cardEl.classList.remove('flipped');
+  document.getElementById('spotify-hidden-wrap').innerHTML = '';
+  const playBtn = document.getElementById('btn-play-trigger');
+  playBtn.style.display = 'none';
+  playBtn.classList.remove('is-playing');
+  playBtn.disabled = false;
+  playBtn.textContent = '▶ Afspil';
+  document.getElementById('card-front-label').textContent = 'Tryk for at trække kort';
+  document.getElementById('card-ring').style.borderColor = 'rgba(201,162,75,0.5)';
+  document.getElementById('guess-hint').style.display = 'none';
+  document.getElementById('btn-reveal').style.display = 'none';
+  document.getElementById('btn-next-card').style.display = 'none';
+}
+
+document.getElementById('game-card').addEventListener('click', () => {
+  const cardEl = document.getElementById('game-card');
+  // Klik på kortet trækker kun et nyt kort, hvis bunken er "frisk" (ingen aktivt kort)
+  if (!cardEl.classList.contains('flipped') && currentCard === null) {
+    drawCard();
+  }
+});
+
+function drawCard() {
+  if (deck.length === 0) { alert('Bunken er tom! Bland igen for at starte en ny runde.'); return; }
+  const idx = deck.pop();
+  currentCard = songs[idx];
+  spotifyController = null;
+  updateDeckLabel();
+
+  // Forbered svaret bag kulissen, men VIS det ikke endnu
+  document.getElementById('back-year').textContent = currentCard.year;
+  document.getElementById('back-title').textContent = currentCard.title;
+  document.getElementById('back-artist').textContent = currentCard.artist;
+
+  // Opret en skjult Spotify-afspiller via IFrame API — ingen cover, titel eller
+  // kunstner er synlig nogen steder, kun en neutral lyd-kilde vi styrer selv.
+  const wrap = document.getElementById('spotify-hidden-wrap');
+  wrap.innerHTML = '';
+  const el = document.createElement('div');
+  wrap.appendChild(el);
+
+  createHiddenSpotifyPlayer(el, currentCard.id, (controller) => {
+    spotifyController = controller;
+    clearTimeout(playerReadyTimeout);
+    const btn = document.getElementById('btn-play-trigger');
+    btn.disabled = false;
+    btn.textContent = '▶ Afspil';
+  });
+
+  // Vis "indlæser"-tilstand, og advar (uden at afsløre sangen) hvis det tager for lang tid
+  document.getElementById('btn-play-trigger').disabled = true;
+  document.getElementById('btn-play-trigger').textContent = '⏳ Gør klar…';
+  clearTimeout(playerReadyTimeout);
+  playerReadyTimeout = setTimeout(() => {
+    if (!spotifyController) {
+      document.getElementById('btn-play-trigger').textContent = '⚠️ Genindlæs siden';
+    }
+  }, 6000);
+
+  // Opdater kortets forside-tekst og vis play-knappen (intet om sangen vises)
+  document.getElementById('card-front-label').textContent = 'Klar — tryk afspil når I lytter';
+  document.getElementById('card-ring').style.borderColor = 'rgba(122,46,46,0.7)';
+  document.getElementById('btn-play-trigger').style.display = 'inline-block';
+  document.getElementById('guess-hint').style.display = 'block';
+  document.getElementById('btn-reveal').style.display = 'inline-block';
+}
+
+document.getElementById('btn-play-trigger').addEventListener('click', (e) => {
+  e.stopPropagation();
+  const btn = document.getElementById('btn-play-trigger');
+  if (!spotifyController) return;
+  if (btn.classList.contains('is-playing')) {
+    spotifyController.pause();
+    btn.classList.remove('is-playing');
+    btn.textContent = '▶ Afspil';
+  } else {
+    spotifyController.play();
+    btn.classList.add('is-playing');
+    btn.textContent = '⏸ Pause';
+  }
+});
+
+document.getElementById('btn-reveal').addEventListener('click', () => {
+  if (!currentCard) return;
+  if (spotifyController) spotifyController.pause();
+  document.getElementById('game-card').classList.add('flipped');
+  document.getElementById('btn-reveal').style.display = 'none';
+  document.getElementById('btn-play-trigger').style.display = 'none';
+  document.getElementById('btn-next-card').style.display = 'inline-block';
+  document.getElementById('guess-hint').style.display = 'none';
+});
+
+document.getElementById('btn-next-card').addEventListener('click', () => {
+  resetCard();
+});
+
+document.getElementById('btn-reshuffle').addEventListener('click', () => {
+  if (confirm('Bland alle sange igen og start en ny bunke?')) shuffleDeck();
+});
+
+document.getElementById('btn-clear-all').addEventListener('click', () => {
+  if (songs.length === 0) return;
+  if (confirm('Slet hele sanglisten? Dette kan ikke fortrydes.')) {
+    songs = [];
+    saveSongs();
+    renderSongList();
+  }
+});
+
+// ---------- Eksport ----------
+document.getElementById('btn-export').addEventListener('click', () => {
+  if (songs.length === 0) {
+    alert('Der er ingen sange at gemme endnu.');
+    return;
+  }
+  const dataStr = JSON.stringify(songs, null, 2);
+  const blob = new Blob([dataStr], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const dateStamp = new Date().toISOString().slice(0, 10);
+  a.href = url;
+  a.download = `hitster-sangliste-${dateStamp}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
+
+// ---------- Import ----------
+document.getElementById('btn-import').addEventListener('click', () => {
+  document.getElementById('file-import').click();
+});
+
+document.getElementById('file-import').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (event) => {
+    let imported;
+    try {
+      imported = JSON.parse(event.target.result);
+    } catch (err) {
+      alert('Filen kunne ikke læses. Sørg for at det er en gyldig sangliste-fil (.json), som er eksporteret herfra.');
+      e.target.value = '';
+      return;
+    }
+
+    if (!Array.isArray(imported)) {
+      alert('Filen indeholder ikke en gyldig sangliste.');
+      e.target.value = '';
+      return;
+    }
+
+    const validSongs = imported.filter(s =>
+      s && typeof s.id === 'string' && typeof s.title === 'string' &&
+      typeof s.artist === 'string' && typeof s.year === 'number'
+    );
+
+    if (validSongs.length === 0) {
+      alert('Filen indeholdt ingen gyldige sange.');
+      e.target.value = '';
+      return;
+    }
+
+    const choice = songs.length > 0
+      ? confirm(
+          `Fundet ${validSongs.length} sang(e) i filen.\n\n` +
+          `Tryk OK for at LÆGGE DEM SAMMEN med din nuværende liste (${songs.length} sange).\n` +
+          `Tryk Annuller for at ERSTATTE din nuværende liste helt.`
+        )
+      : true;
+
+    if (choice) {
+      // Læg sammen, undgå rene dubletter (samme Spotify-id)
+      const existingIds = new Set(songs.map(s => s.id));
+      const merged = songs.concat(validSongs.filter(s => !existingIds.has(s.id)));
+      songs = merged;
+    } else {
+      songs = validSongs;
+    }
+
+    saveSongs();
+    renderSongList();
+    e.target.value = '';
+  };
+  reader.readAsText(file);
+});
+
+loadSongs();
+renderSongList();
+</script>
+</body>
+</html>
